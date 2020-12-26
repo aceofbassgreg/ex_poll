@@ -4,7 +4,7 @@ defmodule ExPoll.Polls.Option do
 
   schema "options" do
     field :value, :string
-    field :poll_id, :id
+    belongs_to(:poll, Poll)
 
     timestamps()
   end
@@ -14,5 +14,6 @@ defmodule ExPoll.Polls.Option do
     option
     |> cast(attrs, [:value])
     |> validate_required([:value])
+    |> assoc_constraint(:poll)
   end
 end

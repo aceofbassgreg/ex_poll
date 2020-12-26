@@ -6,11 +6,6 @@ defmodule ExPollWeb.OptionController do
 
   action_fallback ExPollWeb.FallbackController
 
-  def index(conn, _params) do
-    options = Polls.list_options()
-    render(conn, "index.json", options: options)
-  end
-
   def create(conn, %{"option" => option_params}) do
     with {:ok, %Option{} = option} <- Polls.create_option(option_params) do
       conn
