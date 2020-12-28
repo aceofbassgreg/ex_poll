@@ -5,7 +5,6 @@ defmodule ExPoll.Polls do
 
   import Ecto.Query, warn: false
   alias ExPoll.Repo
-
   alias ExPoll.Polls.Poll
 
   @doc """
@@ -19,6 +18,12 @@ defmodule ExPoll.Polls do
   """
   def list_polls do
     Repo.all(Poll)
+  end
+
+  defp poll_with_options_query(id) do
+    from p in Poll,
+      where: p.id == ^id,
+      preload: [options: ^options_query()]
   end
 
   @doc """
@@ -36,9 +41,9 @@ defmodule ExPoll.Polls do
 
   """
   def get_poll!(id) do
-    Poll
-    |> Repo.get!(id)
-    |> Repo.preload(:options)
+    id
+    |> poll_with_options_query()
+    |> Repo.one!
   end
 
   @doc """
@@ -58,7 +63,7 @@ defmodule ExPoll.Polls do
     |> Poll.changeset(attrs)
     |> Repo.insert()
     |> case do
-      {:ok, %Poll{} = poll} -> {:ok, Repo.preload(poll, :options)}
+      {:ok, %Poll{} = poll} -> {:ok, Repo.preload(poll, options: options_query())}
       error -> error
     end
   end
@@ -112,6 +117,18 @@ defmodule ExPoll.Polls do
 
   alias ExPoll.Polls.Option
 
+  defp options_query do
+    from o in Option,
+      left_join: v in assoc(o, :votes),
+      group_by: o.id,
+      select_merge: %{vote_count: count(v.id)}
+  end
+
+  defp option_query(id) do
+    from o in options_query(),
+      where: o.id == ^id
+  end
+
   @doc """
   Gets a single option.
 
@@ -126,7 +143,11 @@ defmodule ExPoll.Polls do
       ** (Ecto.NoResultsError)
 
   """
-  def get_option!(id), do: Repo.get!(Option, id)
+  def get_option!(id) do
+    id
+    |> option_query()
+    |> Repo.one!()
+  end
 
   @doc """
   Creates a option.
@@ -237,9 +258,10 @@ defmodule ExPoll.Polls do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_vote(attrs \\ %{}) do
-    %Vote{}
-    |> Vote.changeset(attrs)
+  def create_vote(%Option{} = option) do
+    option
+    |> Ecto.build_assoc(:votes)
+    |> change_vote()
     |> Repo.insert()
   end
 
